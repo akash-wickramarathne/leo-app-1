@@ -13,7 +13,7 @@ class WalletScreen extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.blue.shade200,
+              Colors.blue.shade300,
               Colors.blue.shade800,
             ],
           ),
@@ -23,14 +23,23 @@ class WalletScreen extends StatelessWidget {
             Column(
               children: [
                 Container(
-                  height: 300,
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(
-                          'assets/images/balance.jpeg'), // Replace with your background image
-                      fit: BoxFit.cover,
-                      opacity: 0.7,
-                    ),
+                  margin: const EdgeInsets.only(top: 46, right: 46),
+                  height: 200,
+                  child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          width: 150, // Adjust width if necessary
+                          decoration: const BoxDecoration(
+                            image: DecorationImage(
+                              image: AssetImage('assets/images/wallet_img.png'),
+                              opacity: 0.7,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Expanded(
