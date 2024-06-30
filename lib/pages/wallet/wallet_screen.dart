@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:leo_final/pages/payment/payment_screen.dart';
+// import 'package:leo_final/pages/payment/payment_screen.dart';
+import 'package:leo_final/pages/payment/payment_service.dart';
+import 'package:leo_final/pages/payment/payment_webview.dart';
 
-class WalletScreen extends StatelessWidget {
+class WalletScreen extends StatefulWidget {
   const WalletScreen({super.key});
+
+  @override
+  _WalletScreenState createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  String? _selectedPaymentMethod;
 
   @override
   Widget build(BuildContext context) {
@@ -121,12 +130,10 @@ class WalletScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        _buildRechargeChannel(
-                            'Google Pay', 'assets/images/google_pay.png'),
+                        _buildRechargeChannel('Google Pay',
+                            'assets/images/google_pay.png', 'GPay'),
                         _buildRechargeChannel('VISA/MASTERCARD',
-                            'assets/images/visa_mastercard.png'),
-                        // _buildRechargeChannel('MADA', 'assets/images/mada.png'),
-                        // _buildRechargeChannel('STC Pay', 'assets/images/stcpay.png'),
+                            'assets/images/visa_mastercard.png', 'Visa'),
                         const SizedBox(height: 16),
                         Expanded(
                           child: GridView.count(
@@ -184,14 +191,28 @@ class WalletScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRechargeChannel(String name, String asset) {
-    return Card(
-      color: Colors.white,
-      child: ListTile(
-        leading: Image.asset(asset, width: 40),
-        title: Text(name),
-        trailing: const Icon(Icons.arrow_forward_ios, color: Colors.blue),
-        onTap: () {},
+  Widget _buildRechargeChannel(String name, String asset, String value) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: RadioListTile<String>(
+        value: value,
+        groupValue: _selectedPaymentMethod,
+        onChanged: (String? newValue) {
+          setState(() {
+            _selectedPaymentMethod = newValue;
+          });
+        },
+        title: Text(
+          name,
+          style: TextStyle(color: Colors.blue),
+        ),
+        secondary: Image.asset(asset, width: 40),
+        activeColor: Colors.blue,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
       ),
     );
   }
@@ -199,13 +220,8 @@ class WalletScreen extends StatelessWidget {
   Widget _buildDiamondPackage(BuildContext context, int diamonds, int price) {
     return GestureDetector(
       onTap: () {
-        // Navigate to payment page and pass data
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentPage(diamond: diamonds, amount: price),
-          ),
-        );
+        // Show popup to get user details and confirm payment
+        _showPaymentBottomSheet(context, diamonds, price);
       },
       child: Card(
         color: Colors.white,
@@ -237,6 +253,141 @@ class WalletScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPaymentBottomSheet(BuildContext context, int diamonds, int price) {
+    Future<void> _makePayment(BuildContext context) async {
+      final paymentService = PaymentService();
+      final String? redirectUrl =
+          await paymentService.createPayment(diamonds, price);
+
+      if (redirectUrl != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PaymentWebview(url: redirectUrl),
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Payment Error'),
+            content: Text('Failed to process the payment.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
+              child: SingleChildScrollView(
+                controller: scrollController,
+                child: Column(
+                  children: [
+                    const Text(
+                      'Confirm Payment',
+                      style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue),
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Contact Number',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                      initialValue: '$diamonds',
+                      decoration: InputDecoration(
+                        labelText: 'Diamond Count',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      enabled: false,
+                    ),
+                    SizedBox(height: 16),
+                    TextFormField(
+                        initialValue: 'USD $price',
+                        decoration: InputDecoration(
+                          labelText: 'Amount',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          enabled: false,
+                        )),
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (_selectedPaymentMethod == 'GPay') {
+                          // Navigate to Google Pay page
+                          // Navigator.push(
+                          //   context,
+                          //   MaterialPageRoute(
+                          //     builder: (context) =>
+                          //         GooglePayPage(), // Assume you have a GooglePayPage
+                          //   ),
+                          // );
+                        } else {
+                          _makePayment(context);
+                        }
+                      },
+                      child:
+                          Text('Pay Now', style: TextStyle(color: Colors.blue)),
+                      style: ElevatedButton.styleFrom(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        backgroundColor: Colors.blue.shade50,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

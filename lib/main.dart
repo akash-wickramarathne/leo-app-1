@@ -75,6 +75,19 @@ class MyApp extends StatelessWidget {
                   home: MyHomePage(userId: userId, about: about, name: name),
                   routes: {
                     '/wallet': (context) => const WalletScreen(),
+                    '/achievement': (context) => const AchievementPage(),
+                    '/invite': (context) => const InviteFriendsPage(),
+                    '/nobel': (context) => const NobelScreen(),
+                    '/svip': (context) => const SvipScreen(),
+                    '/level': (context) => const LevelScreen(),
+                    '/language': (context) => const LanguageScreen(),
+                    '/feedback': (context) => const FeedbackScreen(),
+                    '/settings': (context) => const SettingsScreen(),
+                    '/all': (context) => AllAchievementsPage(),
+                    '/active': (context) => ActiveAchievementsPage(),
+                    '/charm': (context) => CharmAchievementsPage(),
+                    '/recharge': (context) => RechargeAchievementsPage(),
+                    '/consumption': (context) => ConsumptionAchievementsPage(),
                   }),
             ),
           );
@@ -88,8 +101,10 @@ class MyApp extends StatelessWidget {
                   theme: ThemeData(
                     primarySwatch: Colors.blue,
                   ),
-                  home: const MyHomePage(
-                      userId: '1', about: 'Unknown', name: 'Unknown'),
+                  home:
+                      // const MyHomePage(
+                      //     userId: '1', about: 'Unknown', name: 'Unknown'),
+                      const WelcomePage(),
                   routes: {
                     '/wallet': (context) => const WalletScreen(),
                     '/achievement': (context) => const AchievementPage(),
