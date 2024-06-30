@@ -123,19 +123,24 @@ class _ProfileState extends State<Profile> {
                       ),
                       const SizedBox(height: 16),
                       _buildListItem(context, Icons.account_balance_wallet,
-                          'Wallet', '/wallet'),
+                          'Leo Wallet', '/wallet'),
+                      _buildListItem(
+                          context, Icons.emoji_events, 'Nobel', '/nobel'),
+                      _buildListItem(
+                          context, Icons.star, 'Achivement', '/achievement'),
+                      _buildListItem(
+                          context, Icons.switch_video_sharp, 'Svip', '/svip'),
+                      _buildListItem(
+                          context, Icons.graphic_eq, 'Level', '/level'),
                       _buildListItem(context, Icons.group_add, 'Invite Friends',
                           '/invite'),
-                      _buildListItem(
-                          context, Icons.emoji_events, 'Medal', '/medal'),
-                      _buildListItem(context, Icons.star, 'Level', '/level'),
-                      _buildListItem(context, Icons.show_chart, 'CP', '/cp'),
-                      _buildListItem(context, Icons.store, 'Store', '/store'),
-                      _buildListItem(
-                          context, Icons.list_alt, 'My Items', '/items'),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16),
                       _buildListItem(
                           context, Icons.language, 'Language', '/language'),
+                      _buildListItem(
+                          context, Icons.feedback, 'Feedback', '/feedback'),
+                      _buildListItem(
+                          context, Icons.settings, 'Settings', '/settings'),
                     ],
                   ),
                 )
