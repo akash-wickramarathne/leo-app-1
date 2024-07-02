@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:leo_final/pages/achievement/achievement_screen.dart';
 import 'package:leo_final/pages/achievement/active_achievements_page.dart';
 import 'package:leo_final/pages/achievement/all_achievements_page.dart';
@@ -14,6 +15,7 @@ import 'package:leo_final/pages/invite%20friends/invite_screen.dart';
 import 'package:leo_final/pages/language/language_screen.dart';
 import 'package:leo_final/pages/level/level_screen.dart';
 import 'package:leo_final/pages/nobel/nobel_screen.dart';
+
 import 'package:leo_final/pages/settings/settings_screen.dart';
 import 'package:leo_final/pages/svip/svip_screen.dart';
 import 'package:leo_final/pages/wallet/wallet_screen.dart';
@@ -29,6 +31,9 @@ import 'pages/home page/home_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  Stripe.publishableKey =
+      'pk_test_51PE7q0CnvMccepGGN5R6sUUcTetLKAD8cWEi56rzgh2KqOuB6t1JIr7Eh65dh4hO34mwy6UOtE8QYGS0dRZij3CO00Gdh0xyva';
+
   await ZIMKit().init(
     appID: Initial.id,
     appSign: Initial.signIn,
@@ -101,10 +106,10 @@ class MyApp extends StatelessWidget {
                   theme: ThemeData(
                     primarySwatch: Colors.blue,
                   ),
-                  home:
-                      // const MyHomePage(
-                      //     userId: '1', about: 'Unknown', name: 'Unknown'),
-                      const WelcomePage(),
+                  home: const MyHomePage(
+                      userId: '1', about: 'Unknown', name: 'Unknown'),
+                  // const WelcomePage(),
+
                   routes: {
                     '/wallet': (context) => const WalletScreen(),
                     '/achievement': (context) => const AchievementPage(),

@@ -50,6 +50,7 @@ dependencies:
   url_launcher: ^6.0.9
   crypto: ^3.0.1
   webview_flutter: ^4.8.0
+  flutter_stripe: ^10.2.0
 
 dev_dependencies:
   flutter_test:

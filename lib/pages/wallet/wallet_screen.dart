@@ -1,48 +1,204 @@
-import 'package:flutter/material.dart';
-// import 'package:leo_final/pages/payment/payment_screen.dart';
-import 'package:leo_final/pages/payment/payment_service.dart';
-import 'package:leo_final/pages/payment/payment_webview.dart';
+import 'package:flutter/material.dart' as material;
+import 'package:flutter/widgets.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'dart:convert';
 
-class WalletScreen extends StatefulWidget {
+import 'package:http/http.dart' as http;
+
+class WalletScreen extends material.StatefulWidget {
   const WalletScreen({super.key});
 
   @override
   _WalletScreenState createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends State<WalletScreen> {
+class _WalletScreenState extends material.State<WalletScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  Map<String, dynamic>? paymentIntent;
   String? _selectedPaymentMethod;
+  int? _diamondAmount;
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController contactNumberController = TextEditingController();
+  final TextEditingController emailAddressController = TextEditingController();
+
+  Future<void> makePayment(amount, diamondAmount) async {
+    final userDetails = {
+      "userId": 1,
+      "amount": amount,
+      "firstName": firstNameController.text,
+      "lastName": lastNameController.text,
+      "phoneNumber": contactNumberController.text,
+      "email": emailAddressController.text,
+      "diamondAmount": diamondAmount,
+    };
+
+    print(userDetails.toString());
+    try {
+      // Create payment intent data
+      paymentIntent = await createPaymentIntent(amount.toString(), 'USD');
+      // initialise the payment sheet setup
+      await Stripe.instance.initPaymentSheet(
+        paymentSheetParameters: SetupPaymentSheetParameters(
+          // Client secret key from payment data
+          paymentIntentClientSecret: paymentIntent!['client_secret'],
+          googlePay: const PaymentSheetGooglePay(
+              // Currency and country code is accourding to India
+              testEnv: true,
+              currencyCode: "USD",
+              merchantCountryCode: "US"),
+          // Merchant Name
+          merchantDisplayName: 'Flutterwings',
+          // return URl if you want to add
+          // returnURL: 'flutterstripe://redirect',
+        ),
+      );
+      // Display payment sheet
+      displayPaymentSheet(amount, diamondAmount);
+    } catch (e) {
+      print("exception $e");
+
+      if (e is StripeConfigException) {
+        print("Stripe exception ${e.message}");
+      } else {
+        print("exception $e");
+      }
+    }
+  }
+
+  displayPaymentSheet(amount, diamondAmount) async {
+    try {
+      // "Display payment sheet";
+      await Stripe.instance.presentPaymentSheet();
+      // Show when payment is done
+      // Displaying snackbar for it
+      material.ScaffoldMessenger.of(context).showSnackBar(
+        const material.SnackBar(content: material.Text("Paid successfully")),
+      );
+      paymentIntent = null;
+      Map<String, dynamic> postData = {
+        "userId": 1,
+        "amount": amount,
+        "firstName": firstNameController.text,
+        "lastName": lastNameController.text,
+        "phoneNumber": contactNumberController.text,
+        "email": emailAddressController.text,
+        "diamondAmount": diamondAmount
+      };
+
+      // Send POST request
+      var response = await http.post(
+        Uri.parse('http://45.126.125.172:8080/api/v1/wallet/save'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(postData),
+      );
+
+      if (response.statusCode == 200) {
+        // Navigate to the /wallet route
+        Navigator.pushNamed(context, '/wallet');
+      } else {
+        print('Failed to save data: ${response.statusCode}');
+      }
+    } on StripeException catch (e) {
+      // If any error comes during payment
+      // so payment will be cancelled
+      print('Error: $e');
+
+      material.ScaffoldMessenger.of(context).showSnackBar(
+        const material.SnackBar(content: material.Text(" Payment Cancelled")),
+      );
+    } catch (e) {
+      print("Error in displaying");
+      print('$e');
+    }
+  }
+
+  createPaymentIntent(String amount, String currency) async {
+    try {
+      Map<String, dynamic> body = {
+        'amount': ((int.parse(amount)) * 100).toString(),
+        'currency': currency,
+        'payment_method_types[]': 'card',
+      };
+      var secretKey =
+          "sk_test_51PE7q0CnvMccepGG7noBN7k40TNU2LUCLbBzacYnC9CI8gQSyn7dJfKdhn28fpyDhX6H71LXqTzumNJSIqaQahFv00I4Rc6lPE";
+      var response = await http.post(
+        Uri.parse('https://api.stripe.com/v1/payment_intents'),
+        headers: {
+          'Authorization': 'Bearer $secretKey',
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: body,
+      );
+      print('Payment Intent Body: ${response.body.toString()}');
+      return jsonDecode(response.body.toString());
+    } catch (err) {
+      print('Error charging user: ${err.toString()}');
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+  void initState() {
+    super.initState();
+    _fetchDiamondAmount();
+  }
+
+  Future<void> _fetchDiamondAmount() async {
+    final url =
+        Uri.parse('http://45.126.125.172:8080/api/v1/wallet/diamondAmount/1');
+
+    try {
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final jsonData = jsonDecode(response.body);
+        final diamondAmount = jsonData['diamondAmount'];
+
+        setState(() {
+          _diamondAmount = diamondAmount;
+        });
+      } else {
+        // Handle error response
+        print('Failed to fetch diamond amount: ${response.statusCode}');
+      }
+    } catch (e) {
+      // Handle network error
+      print('Error fetching diamond amount: $e');
+    }
+  }
+
+  @override
+  material.Widget build(material.BuildContext context) {
+    return material.Scaffold(
+      body: material.Container(
+        decoration: material.BoxDecoration(
+          gradient: material.LinearGradient(
+            begin: material.Alignment.topLeft,
+            end: material.Alignment.bottomRight,
             colors: [
-              Colors.blue.shade300,
-              Colors.blue.shade800,
+              material.Colors.blue.shade300,
+              material.Colors.blue.shade800,
             ],
           ),
         ),
-        child: Stack(
+        child: material.Stack(
           children: [
-            Column(
+            material.Column(
               children: [
-                Container(
-                  margin: const EdgeInsets.only(top: 46, right: 46),
+                material.Container(
+                  margin: const material.EdgeInsets.only(top: 46, right: 46),
                   height: 200,
-                  child: Stack(
+                  child: material.Stack(
                     children: [
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Container(
+                      material.Align(
+                        alignment: material.Alignment.centerRight,
+                        child: material.Container(
                           width: 150, // Adjust width if necessary
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/images/wallet_img.png'),
+                          decoration: const material.BoxDecoration(
+                            image: material.DecorationImage(
+                              image: material.AssetImage(
+                                  'assets/images/wallet_img.png'),
                               opacity: 0.7,
                             ),
                           ),
@@ -51,92 +207,99 @@ class _WalletScreenState extends State<WalletScreen> {
                     ],
                   ),
                 ),
-                Expanded(
-                  child: Container(
-                    color: Colors.transparent,
+                material.Expanded(
+                  child: material.Container(
+                    color: material.Colors.transparent,
                   ),
                 ),
               ],
             ),
-            Column(
+            material.Column(
               children: [
-                AppBar(
-                  backgroundColor: Colors.transparent,
+                material.AppBar(
+                  backgroundColor: material.Colors.transparent,
                   elevation: 0,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  leading: material.IconButton(
+                    icon: const material.Icon(material.Icons.arrow_back,
+                        color: material.Colors.white),
                     onPressed: () {
-                      Navigator.pop(context);
+                      material.Navigator.pop(context);
                     },
                   ),
                   actions: [
-                    IconButton(
-                      icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                    material.IconButton(
+                      icon: const material.Icon(material.Icons.menu_rounded,
+                          color: material.Colors.white),
                       onPressed: () {},
                     ),
                   ],
-                  title: const Text(
+                  title: const material.Text(
                     'Wallet',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+                    style: material.TextStyle(
+                      color: material.Colors.white,
+                      fontWeight: material.FontWeight.bold,
                     ),
                   ),
                 ),
-                Container(
-                  alignment: Alignment.topLeft,
-                  margin: const EdgeInsets.only(left: 20),
-                  child: _buildBalanceWidget(),
+                material.Container(
+                  alignment: material.Alignment.topLeft,
+                  margin: const material.EdgeInsets.only(left: 20),
+                  child: _diamondAmount != null
+                      ? _buildBalanceWidget(_diamondAmount!)
+                      : const material
+                          .CircularProgressIndicator(), // Placeholder for loading state
                 ),
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                material.Expanded(
+                  child: material.Container(
+                    padding: const material.EdgeInsets.all(16),
+                    decoration: material.BoxDecoration(
+                      gradient: material.LinearGradient(
+                        begin: material.Alignment.topLeft,
+                        end: material.Alignment.bottomRight,
                         colors: [
-                          Colors.blue.shade200,
-                          Colors.blue.shade800,
+                          material.Colors.blue.shade200,
+                          material.Colors.blue.shade800,
                         ],
                       ),
-                      borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(30)),
+                      borderRadius: material.BorderRadius.vertical(
+                          top: material.Radius.circular(30)),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: material.Column(
+                      crossAxisAlignment: material.CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const material.SizedBox(height: 16),
+                        material.Row(
+                          mainAxisAlignment:
+                              material.MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            const material.Text(
                               'Recharge Channel',
-                              style: TextStyle(
+                              style: material.TextStyle(
                                 fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                fontWeight: material.FontWeight.bold,
+                                color: material.Colors.white,
                               ),
                             ),
-                            Row(
+                            material.Row(
                               children: const [
-                                Text('Saudi Arabia',
-                                    style: TextStyle(color: Colors.white)),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_drop_down,
-                                    color: Colors.white),
+                                material.Text('Saudi Arabia',
+                                    style: material.TextStyle(
+                                        color: material.Colors.white)),
+                                material.SizedBox(width: 8),
+                                material.Icon(material.Icons.arrow_drop_down,
+                                    color: material.Colors.white),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const material.SizedBox(height: 8),
                         _buildRechargeChannel('Google Pay',
                             'assets/images/google_pay.png', 'GPay'),
                         _buildRechargeChannel('VISA/MASTERCARD',
                             'assets/images/visa_mastercard.png', 'Visa'),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: GridView.count(
+                        const material.SizedBox(height: 16),
+                        material.Expanded(
+                          child: material.GridView.count(
                             crossAxisCount: 3,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
@@ -162,28 +325,28 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildBalanceWidget() {
-    return Container(
-      color: Colors.transparent,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
+  material.Widget _buildBalanceWidget(int diamondAmount) {
+    return material.Container(
+      color: material.Colors.transparent,
+      padding: const material.EdgeInsets.all(16),
+      child: material.Column(
+        crossAxisAlignment: material.CrossAxisAlignment.start,
+        children: [
+          material.Text(
             'Balance',
-            style: TextStyle(
+            style: material.TextStyle(
               fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontWeight: material.FontWeight.bold,
+              color: material.Colors.white,
             ),
           ),
-          SizedBox(height: 8),
-          Text(
-            '0',
-            style: TextStyle(
+          material.SizedBox(height: 8),
+          material.Text(
+            diamondAmount.toString(),
+            style: material.TextStyle(
               fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontWeight: material.FontWeight.bold,
+              color: material.Colors.white,
             ),
           ),
         ],
@@ -191,14 +354,15 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  Widget _buildRechargeChannel(String name, String asset, String value) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
+  material.Widget _buildRechargeChannel(
+      String name, String asset, String value) {
+    return material.Container(
+      margin: const material.EdgeInsets.symmetric(vertical: 4),
+      decoration: material.BoxDecoration(
+        color: material.Colors.white,
+        borderRadius: material.BorderRadius.circular(8),
       ),
-      child: RadioListTile<String>(
+      child: material.RadioListTile<String>(
         value: value,
         groupValue: _selectedPaymentMethod,
         onChanged: (String? newValue) {
@@ -206,48 +370,49 @@ class _WalletScreenState extends State<WalletScreen> {
             _selectedPaymentMethod = newValue;
           });
         },
-        title: Text(
+        title: material.Text(
           name,
-          style: TextStyle(color: Colors.blue),
+          style: material.TextStyle(color: material.Colors.blue),
         ),
-        secondary: Image.asset(asset, width: 40),
-        activeColor: Colors.blue,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+        secondary: material.Image.asset(asset, width: 40),
+        activeColor: material.Colors.blue,
+        contentPadding: const material.EdgeInsets.symmetric(horizontal: 16),
       ),
     );
   }
 
-  Widget _buildDiamondPackage(BuildContext context, int diamonds, int price) {
-    return GestureDetector(
+  material.Widget _buildDiamondPackage(
+      material.BuildContext context, int diamonds, int price) {
+    return material.GestureDetector(
       onTap: () {
         // Show popup to get user details and confirm payment
         _showPaymentBottomSheet(context, diamonds, price);
       },
-      child: Card(
-        color: Colors.white,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
+      child: material.Card(
+        color: material.Colors.white,
+        child: material.Column(
+          mainAxisAlignment: material.MainAxisAlignment.center,
+          crossAxisAlignment: material.CrossAxisAlignment.center,
           children: [
-            Image.asset(
+            material.Image.asset(
               'assets/images/diamond.png',
               width: 60,
             ),
-            const SizedBox(height: 2),
-            Text(
+            const material.SizedBox(height: 2),
+            material.Text(
               '$diamonds',
-              style: const TextStyle(
+              style: const material.TextStyle(
                 fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontWeight: material.FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 2),
-            Text(
+            const material.SizedBox(height: 2),
+            material.Text(
               'USD $price',
-              style: const TextStyle(
+              style: const material.TextStyle(
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.blue,
+                fontWeight: material.FontWeight.w600,
+                color: material.Colors.blue,
               ),
             ),
           ],
@@ -256,132 +421,163 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  void _showPaymentBottomSheet(BuildContext context, int diamonds, int price) {
-    Future<void> _makePayment(BuildContext context) async {
-      final paymentService = PaymentService();
-      final String? redirectUrl =
-          await paymentService.createPayment(diamonds, price);
-
-      if (redirectUrl != null) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PaymentWebview(url: redirectUrl),
-          ),
-        );
-      } else {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('Payment Error'),
-            content: Text('Failed to process the payment.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('OK'),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-
-    showModalBottomSheet(
+  void _showPaymentBottomSheet(
+      material.BuildContext context, int diamonds, int price) {
+    material.showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return DraggableScrollableSheet(
+      backgroundColor: material.Colors.transparent,
+      builder: (material.BuildContext context) {
+        return material.DraggableScrollableSheet(
           initialChildSize: 0.6,
           minChildSize: 0.4,
           maxChildSize: 0.9,
           builder: (context, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(30),
+            return material.Container(
+              decoration: const material.BoxDecoration(
+                color: material.Colors.white,
+                borderRadius: material.BorderRadius.vertical(
+                  top: material.Radius.circular(30),
                 ),
               ),
-              padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
+              padding: const material.EdgeInsets.all(16),
+              child: material.SingleChildScrollView(
                 controller: scrollController,
-                child: Column(
-                  children: [
-                    const Text(
-                      'Confirm Payment',
-                      style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue),
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Name',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
+                child: material.Form(
+                  key: _formKey,
+                  child: material.Column(
+                    children: [
+                      const material.Text(
+                        'Confirm Payment',
+                        style: material.TextStyle(
+                            fontSize: 24,
+                            fontWeight: material.FontWeight.bold,
+                            color: material.Colors.blue),
                       ),
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                      decoration: InputDecoration(
-                        labelText: 'Contact Number',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                      initialValue: '$diamonds',
-                      decoration: InputDecoration(
-                        labelText: 'Diamond Count',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      enabled: false,
-                    ),
-                    SizedBox(height: 16),
-                    TextFormField(
-                        initialValue: 'USD $price',
-                        decoration: InputDecoration(
-                          labelText: 'Amount',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20),
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                        controller: firstNameController,
+                        decoration: material.InputDecoration(
+                          labelText: 'First Name',
+                          border: material.OutlineInputBorder(
+                            borderRadius: material.BorderRadius.circular(20),
                           ),
-                          enabled: false,
-                        )),
-                    SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (_selectedPaymentMethod == 'GPay') {
-                          // Navigate to Google Pay page
-                          // Navigator.push(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //     builder: (context) =>
-                          //         GooglePayPage(), // Assume you have a GooglePayPage
-                          //   ),
-                          // );
-                        } else {
-                          _makePayment(context);
-                        }
-                      },
-                      child:
-                          Text('Pay Now', style: TextStyle(color: Colors.blue)),
-                      style: ElevatedButton.styleFrom(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
                         ),
-                        backgroundColor: Colors.blue.shade50,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your first name';
+                          }
+                          return null;
+                        },
                       ),
-                    ),
-                  ],
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                        controller: lastNameController,
+                        decoration: material.InputDecoration(
+                          labelText: 'Last Name',
+                          border: material.OutlineInputBorder(
+                            borderRadius: material.BorderRadius.circular(20),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your last name';
+                          }
+                          return null;
+                        },
+                      ),
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                        controller: contactNumberController,
+                        decoration: material.InputDecoration(
+                          labelText: 'Contact Number',
+                          border: material.OutlineInputBorder(
+                            borderRadius: material.BorderRadius.circular(20),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your contact number';
+                          }
+                          return null;
+                        },
+                      ),
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                        controller: emailAddressController,
+                        decoration: material.InputDecoration(
+                          labelText: 'Email Address',
+                          border: material.OutlineInputBorder(
+                            borderRadius: material.BorderRadius.circular(20),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          return null;
+                        },
+                      ),
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                        readOnly: true,
+                        initialValue: '$diamonds Diamonds',
+                        decoration: material.InputDecoration(
+                          labelText: '',
+                          border: material.OutlineInputBorder(
+                            borderRadius: material.BorderRadius.circular(20),
+                          ),
+                        ),
+                      ),
+                      material.SizedBox(height: 8),
+                      material.TextFormField(
+                          readOnly: true,
+                          initialValue: 'USD $price',
+                          decoration: material.InputDecoration(
+                            labelText: '',
+                            border: material.OutlineInputBorder(
+                              borderRadius: material.BorderRadius.circular(20),
+                            ),
+                          )),
+                      material.SizedBox(height: 8),
+                      material.ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            // Form is valid, proceed with payment
+                            if (_selectedPaymentMethod == 'GPay') {
+                              // Navigate to Google Pay page
+                              // Navigator.push(
+                              //   context,
+                              //   MaterialPageRoute(
+                              //     builder: (context) =>
+                              //         GooglePayPage(), // Assume you have a GooglePayPage
+                              //   ),
+                              // );
+                            } else {
+                              makePayment(price, diamonds);
+                            }
+                          } else {
+                            material.ScaffoldMessenger.of(context).showSnackBar(
+                              const material.SnackBar(
+                                  content:
+                                      material.Text("Please fill all fields")),
+                            );
+                          }
+                        },
+                        child: material.Text('Pay Now',
+                            style: material.TextStyle(
+                                color: material.Colors.blue)),
+                        style: material.ElevatedButton.styleFrom(
+                          padding: material.EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 16),
+                          shape: material.RoundedRectangleBorder(
+                            borderRadius: material.BorderRadius.circular(30),
+                          ),
+                          backgroundColor: material.Colors.blue.shade50,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
