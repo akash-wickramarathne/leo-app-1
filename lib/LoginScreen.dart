@@ -19,9 +19,9 @@ class _LoginScreenState extends State<LoginScreen> {
     // if (user != null) {
     //   Navigator.pushReplacementNamed(context, '/home', arguments: user);
     // } else {
-      // Handle login error
-      Navigator.pushNamedAndRemoveUntil(context, '/home' , (route) => false);
-  //  }
+    // Handle login error
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+    //  }
   }
 
   @override
