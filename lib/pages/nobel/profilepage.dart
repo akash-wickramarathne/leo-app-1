@@ -331,13 +331,7 @@ class _profilepageState extends State<profilepage> {
                           children: [
                             IconButton(
                                 onPressed: () {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) {
-                                        return Profile();
-                                      },
-                                    ),
-                                  );
+                                  Navigator.of(context).pop();
                                 },
                                 icon: Icon(
                                   Icons.arrow_back_ios,
