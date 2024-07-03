@@ -396,7 +396,7 @@ class _WalletScreenState extends material.State<WalletScreen> {
           children: [
             material.Image.asset(
               'assets/images/diamond.png',
-              width: 60,
+              width: 50,
             ),
             const material.SizedBox(height: 2),
             material.Text(

@@ -3,30 +3,32 @@ import 'package:flutter/material.dart';
 class AllAchievementsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        AchievementItem(
-          title: 'Daily Recharge Diamond',
-          subtitle: "Total amount of diamond you've recharged....",
-          icon: Icons.diamond,
-          progress: 0.5,
-          stages: [50, 100, 150, 200, 300, 400, 500, 600],
-        ),
-        AchievementItem(
-          title: 'Total Recharge Diamond',
-          subtitle: "Total amount of diamond you've recharged....",
-          icon: Icons.diamond,
-          progress: 0.5,
-          stages: [50, 70, 100, 250, 500],
-        ),
-        AchievementItem(
-          title: 'Item Received Times',
-          subtitle: "Number of times you've received items",
-          icon: Icons.card_giftcard,
-          progress: 0.3,
-          stages: [100, 2000],
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          AchievementItem(
+            title: 'Daily Recharge Diamond',
+            subtitle: "Total amount of diamond you've recharged....",
+            icon: Icons.diamond,
+            progress: 0.5,
+            stages: [50, 100, 150, 200, 300, 400, 500, 600],
+          ),
+          AchievementItem(
+            title: 'Total Recharge Diamond',
+            subtitle: "Total amount of diamond you've recharged....",
+            icon: Icons.diamond,
+            progress: 0.5,
+            stages: [50, 70, 100, 250, 500],
+          ),
+          AchievementItem(
+            title: 'Item Received Times',
+            subtitle: "Number of times you've received items",
+            icon: Icons.card_giftcard,
+            progress: 0.3,
+            stages: [100, 2000],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -65,7 +67,10 @@ class AchievementItem extends StatelessWidget {
                     Text(title,
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text(subtitle),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
                   ],
                 ),
                 Spacer(),
@@ -83,7 +88,7 @@ class AchievementItem extends StatelessWidget {
                   children: [
                     Container(
                       height: 8,
-                      width: MediaQuery.of(context).size.width,
+                      width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.grey[300],
                         borderRadius: BorderRadius.circular(4),
